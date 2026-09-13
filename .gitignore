@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+data/raw/*.csv
+data/processed/*.csv
+models/*.cbm
+catboost_info/
+.ipynb_checkpoints/
