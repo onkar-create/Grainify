@@ -7,3 +7,4 @@ data/processed/*.csv
 models/*.cbm
 catboost_info/
 .ipynb_checkpoints/
+backend/grainify.db

@@ -52,7 +52,7 @@ This will:
 4. Run an El Niño drought scenario and compare Min-Cost Max-Flow optimized allocation
    against a naive proportional baseline, printing cost and unmet-demand savings.
 
-## Dashboard
+## Dashboard (Streamlit prototype)
 
 ```bash
 streamlit run dashboard/app.py
@@ -60,6 +60,22 @@ streamlit run dashboard/app.py
 
 Lets you pick a drought severity, run the optimization, and see per-district allocation,
 cost, and unmet-demand charts for optimized vs. baseline allocation.
+
+## Backend API (FastAPI + SQLite)
+
+Powers the full website (React frontend calls this). Every scenario run is persisted to
+`backend/grainify.db` so past runs show up in the History page.
+
+```bash
+python -m uvicorn backend.main:app --reload --port 8000
+```
+
+Interactive API docs at `http://localhost:8000/docs`. Key endpoints:
+
+- `GET /api/districts`, `GET /api/warehouses`, `GET /api/scenarios`
+- `POST /api/run-scenario` — body `{"scenario": "Severe El Nino"}`, runs forecasting +
+  optimization, saves the run, returns full district-level results
+- `GET /api/history` — list past runs; `GET /api/history/{run_id}` — one run's detail
 
 ## Swapping in real data
 

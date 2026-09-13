@@ -6,3 +6,7 @@ networkx
 streamlit
 matplotlib
 plotly
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
