@@ -77,6 +77,15 @@ Interactive API docs at `http://localhost:8000/docs`. Key endpoints:
   optimization, saves the run, returns full district-level results
 - `GET /api/history` — list past runs; `GET /api/history/{run_id}` — one run's detail
 
+## Tests
+
+```bash
+python -m pytest tests/ -v
+```
+
+Covers every endpoint plus a regression check that no district is ever left at 0%
+allocation (the equity floor in `src/network_optimizer.py`).
+
 ## Swapping in real data
 
 Replace the files in `data/raw/` with the real datasets (same column names as the synthetic
