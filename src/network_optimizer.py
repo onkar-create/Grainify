@@ -36,8 +36,14 @@ def build_flow_graph(supply: dict, demand: dict) -> nx.DiGraph:
     return G
 
 
-def optimized_allocation(supply: dict, demand: dict) -> dict:
-    """Runs Min-Cost Max-Flow to allocate warehouse stock to district demand."""
+def _min_cost_max_flow(supply: dict, demand: dict) -> dict:
+    """
+    Runs plain Min-Cost Max-Flow. On its own this only minimizes total transport
+    cost among all ways of achieving the maximum possible flow — with no competing
+    objective for spread, it will happily allocate 0 to a far/expensive district to
+    keep cheaper, closer ones at 100%. See `optimized_allocation` for the
+    equity-aware version actually used by the simulation.
+    """
     G = build_flow_graph(supply, demand)
     flow_dict = nx.max_flow_min_cost(G, SOURCE, SINK)
     total_cost = nx.cost_of_flow(G, flow_dict)
@@ -48,9 +54,52 @@ def optimized_allocation(supply: dict, demand: dict) -> dict:
             if district in fulfilled:
                 fulfilled[district] += amt
 
+    warehouse_usage = {wh: flow_dict.get(SOURCE, {}).get(wh, 0.0) for wh in supply}
+
     unmet = {d: max(0.0, demand[d] - fulfilled[d]) for d in demand}
     return {
         "allocation": fulfilled,
+        "cost": total_cost,
+        "unmet": unmet,
+        "total_unmet": sum(unmet.values()),
+        "total_cost": total_cost,
+        "warehouse_usage": warehouse_usage,
+    }
+
+
+def optimized_allocation(supply: dict, demand: dict, min_service_level: float = 0.5) -> dict:
+    """
+    Equity-aware Min-Cost Max-Flow, run in two stages so no single district can be
+    starved to zero just because it's expensive to reach:
+
+    Stage 1 (equity floor): guarantee every district at least `min_service_level`
+    of its demand, solved as its own Min-Cost Max-Flow so the floor itself is still
+    delivered as cheaply as possible.
+    Stage 2 (efficiency top-up): whatever warehouse stock is left after the floor
+    is allocated to remaining unmet demand, again cost-minimized.
+
+    This keeps the "minimize cost" objective from the report while also satisfying
+    the "ensure equitable distribution" objective — as long as total supply covers
+    at least `min_service_level` of total demand, every district gets that floor
+    before any district is topped up further.
+    """
+    floor_demand = {d: dem * min_service_level for d, dem in demand.items()}
+    stage1 = _min_cost_max_flow(supply, floor_demand)
+
+    remaining_supply = {
+        wh: max(0.0, supply[wh] - stage1["warehouse_usage"].get(wh, 0.0)) for wh in supply
+    }
+    remaining_demand = {
+        d: max(0.0, demand[d] - stage1["allocation"].get(d, 0.0)) for d in demand
+    }
+    stage2 = _min_cost_max_flow(remaining_supply, remaining_demand)
+
+    allocation = {d: stage1["allocation"][d] + stage2["allocation"][d] for d in demand}
+    total_cost = stage1["cost"] + stage2["cost"]
+    unmet = {d: max(0.0, demand[d] - allocation[d]) for d in demand}
+
+    return {
+        "allocation": allocation,
         "cost": total_cost,
         "unmet": unmet,
         "total_unmet": sum(unmet.values()),
