@@ -75,8 +75,20 @@ def generate_fci_stock_data(rng):
     return pd.DataFrame(rows)
 
 
+REAL_CENSUS_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "data", "external", "census_2011_district_population.csv"
+)
+
+
 def generate_census_data():
-    """Static district population snapshot (Census-style)."""
+    """
+    District population. Real Census of India 2011 figures for our 17 districts
+    (data/external/census_2011_district_population.csv) — everything else in this
+    module is synthetic, but population doesn't need to be.
+    """
+    if os.path.exists(REAL_CENSUS_PATH):
+        real = pd.read_csv(REAL_CENSUS_PATH)
+        return real[["district", "state", "population"]]
     rows = [{"district": d, "population": meta["population"], "state": meta["state"]}
             for d, meta in DISTRICTS.items()]
     return pd.DataFrame(rows)
