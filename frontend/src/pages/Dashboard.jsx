@@ -1,0 +1,146 @@
+import { useEffect, useState } from "react";
+import { api } from "../api";
+import KpiCard from "../components/KpiCard";
+import ComparisonBarChart from "../components/ComparisonBarChart";
+import DistrictChart from "../components/DistrictChart";
+
+const fmtTonnes = (v) => `${Math.round(v).toLocaleString()} t`;
+const fmtRupees = (v) => `₹${Math.round(v).toLocaleString()}`;
+
+export default function Dashboard() {
+  const [scenarios, setScenarios] = useState([]);
+  const [scenario, setScenario] = useState("Severe El Nino");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.getScenarios().then(setScenarios).catch((e) => setError(e.message));
+  }, []);
+
+  const runScenario = async (name) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.runScenario(name);
+      setResult(data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    runScenario(scenario);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const districtData = result
+    ? result.district_results
+        .slice()
+        .sort((a, b) => b.demand - a.demand)
+        .map((d) => ({
+          district: d.district,
+          demand: Math.round(d.demand),
+          baseline: Math.round(d.baseline_allocation),
+          optimized: Math.round(d.optimized_allocation),
+        }))
+    : [];
+
+  return (
+    <div className="container" style={{ paddingTop: 32, paddingBottom: 56 }}>
+      <div className="dashboard-header">
+        <div>
+          <h1 style={{ margin: "0 0 6px", fontSize: "1.7rem" }}>Scenario Dashboard</h1>
+          <p style={{ color: "var(--text-muted)" }}>
+            Pick a drought severity and compare optimized vs. conventional grain allocation.
+          </p>
+        </div>
+        <div className="control-bar">
+          <select value={scenario} onChange={(e) => setScenario(e.target.value)}>
+            {scenarios.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <button className="btn btn-primary" disabled={loading} onClick={() => runScenario(scenario)}>
+            {loading ? "Running..." : "Run Optimization"}
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {loading && !result && (
+        <div className="state">
+          <div className="spinner" />
+          Forecasting demand and solving the allocation network...
+        </div>
+      )}
+
+      {result && (
+        <>
+          <div className="kpi-grid">
+            <KpiCard label="Total predicted demand" value={fmtTonnes(result.total_demand)} />
+            <KpiCard label="Total warehouse supply" value={fmtTonnes(result.total_supply)} />
+            <KpiCard label="Cost reduction vs. baseline" value={`${result.cost_savings_pct.toFixed(1)}%`} positive />
+            <KpiCard label="Unmet demand reduction" value={`${result.unmet_reduction_pct.toFixed(1)}%`} positive />
+          </div>
+
+          <div className="chart-grid">
+            <div className="card chart-card">
+              <h3>Total transport cost</h3>
+              <ComparisonBarChart
+                baselineValue={result.baseline_cost}
+                optimizedValue={result.optimized_cost}
+                valueFormatter={fmtRupees}
+              />
+            </div>
+            <div className="card chart-card">
+              <h3>Total unmet demand</h3>
+              <ComparisonBarChart
+                baselineValue={result.baseline_unmet}
+                optimizedValue={result.optimized_unmet}
+                valueFormatter={fmtTonnes}
+              />
+            </div>
+          </div>
+
+          <div className="card chart-card" style={{ marginBottom: 24 }}>
+            <h3>District-level allocation</h3>
+            <DistrictChart data={districtData} />
+          </div>
+
+          <div className="card">
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>District</th>
+                    <th>Demand</th>
+                    <th>Baseline alloc.</th>
+                    <th>Baseline unmet</th>
+                    <th>Optimized alloc.</th>
+                    <th>Optimized unmet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.district_results.map((d) => (
+                    <tr key={d.district}>
+                      <td>{d.district}</td>
+                      <td>{fmtTonnes(d.demand)}</td>
+                      <td>{fmtTonnes(d.baseline_allocation)}</td>
+                      <td>{fmtTonnes(d.baseline_unmet)}</td>
+                      <td>{fmtTonnes(d.optimized_allocation)}</td>
+                      <td>{fmtTonnes(d.optimized_unmet)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

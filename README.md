@@ -12,7 +12,8 @@ transport cost and unmet demand.
 grainify/
 ├── data/
 │   ├── raw/            # source datasets (synthetic by default, swap in real data here)
-│   └── processed/      # cleaned, merged dataset used for training
+│   ├── processed/      # cleaned, merged dataset used for training
+│   └── external/       # real data checked into the repo (e.g. Census 2011 population)
 ├── models/             # trained model artifacts (.cbm)
 ├── src/
 │   ├── config.py               # districts, warehouses, transport network definition
@@ -21,8 +22,11 @@ grainify/
 │   ├── forecasting.py          # trains/loads the CatBoost demand model
 │   ├── network_optimizer.py    # Min-Cost Max-Flow optimizer + baseline allocator
 │   └── simulation.py           # runs a scenario end-to-end, returns comparison metrics
+├── backend/             # FastAPI + SQLite API that powers the website
+├── frontend/            # React (Vite) website: landing page, dashboard, history
+├── tests/               # backend API tests (pytest)
 ├── dashboard/
-│   └── app.py           # Streamlit dashboard
+│   └── app.py           # Streamlit dashboard (earlier standalone prototype)
 ├── run_pipeline.py      # CLI entry point to run the whole pipeline without the UI
 └── requirements.txt
 ```
@@ -76,6 +80,26 @@ Interactive API docs at `http://localhost:8000/docs`. Key endpoints:
 - `POST /api/run-scenario` — body `{"scenario": "Severe El Nino"}`, runs forecasting +
   optimization, saves the run, returns full district-level results
 - `GET /api/history` — list past runs; `GET /api/history/{run_id}` — one run's detail
+
+## Frontend (React website)
+
+The full website — landing page, scenario dashboard, and run history — lives in
+`frontend/`. It talks to the FastAPI backend above.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Opens at `http://localhost:5173` by default. Make sure the backend
+(`uvicorn backend.main:app --reload --port 8000`) is running first — the frontend calls
+it at the URL in `frontend/.env` (`VITE_API_BASE_URL`, defaults to `http://localhost:8000`).
+
+Pages:
+- **`/`** — landing page (problem statement, objectives, tech stack, team)
+- **`/dashboard`** — pick a scenario, run the optimizer, see KPIs and charts
+- **`/history`** — every past run, click one to see its full district breakdown
 
 ## Tests
 
