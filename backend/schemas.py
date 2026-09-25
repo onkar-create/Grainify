@@ -2,7 +2,53 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    role: str
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "viewer"
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v):
+        if v not in ("officer", "viewer"):
+            raise ValueError('role must be "officer" or "viewer"')
+        return v
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v):
+        if len(v.strip()) < 3:
+            raise ValueError("username must be at least 3 characters")
+        return v.strip()
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise ValueError("password must be at least 6 characters")
+        return v
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
 
 
 class DistrictResultOut(BaseModel):

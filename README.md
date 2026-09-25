@@ -74,11 +74,32 @@ Powers the full website (React frontend calls this). Every scenario run is persi
 python -m uvicorn backend.main:app --reload --port 8000
 ```
 
-Interactive API docs at `http://localhost:8000/docs`. Key endpoints:
+Interactive API docs at `http://localhost:8000/docs`.
 
+### Auth
+
+Every endpoint except `/api/health`, `/api/auth/register` and `/api/auth/login` requires a
+Bearer token. There are two roles:
+
+- **officer** — can view everything and trigger `POST /api/run-scenario`
+- **viewer** — can view everything (districts, warehouses, history) but gets a 403 if they
+  try to run a new scenario
+
+```bash
+curl -X POST localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "officer1", "password": "secret123", "role": "officer"}'
+# -> {"access_token": "...", "user": {...}}
+
+curl localhost:8000/api/districts -H "Authorization: Bearer <access_token>"
+```
+
+### Key endpoints
+
+- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
 - `GET /api/districts`, `GET /api/warehouses`, `GET /api/scenarios`
 - `POST /api/run-scenario` — body `{"scenario": "Severe El Nino"}`, runs forecasting +
-  optimization, saves the run, returns full district-level results
+  optimization, saves the run, returns full district-level results (**officer only**)
 - `GET /api/history` — list past runs; `GET /api/history/{run_id}` — one run's detail
 
 ## Frontend (React website)

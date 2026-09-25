@@ -12,3 +12,4 @@ sqlalchemy
 pydantic
 pytest
 httpx
+bcrypt
