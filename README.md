@@ -116,8 +116,17 @@ it at the URL in `frontend/.env` (`VITE_API_BASE_URL`, defaults to `http://local
 
 Pages:
 - **`/`** — landing page (problem statement, objectives, tech stack, team)
-- **`/dashboard`** — pick a scenario, run the optimizer, see KPIs and charts
+- **`/login`**, **`/register`** — account required for the pages below
+- **`/dashboard`** — a two-step workflow: **1. Predict Demand** (forecast only, no
+  allocation) then **2. Optimize Distribution** (runs the full Min-Cost Max-Flow
+  optimizer). Once optimized: KPIs, cost/unmet-demand charts, an interactive
+  **Leaflet map** of Maharashtra (districts shaded by unmet-demand severity,
+  warehouse markers, allocation routes — click a district for population/demand/
+  allocation/serving-warehouse detail), the district table, and a **Download
+  Distribution Plan (CSV)** button
 - **`/history`** — every past run, click one to see its full district breakdown
+- **`/reports`** — trends across every run: average cost/unmet reduction, line
+  charts over time, full run log
 
 ## Tests
 

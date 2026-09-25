@@ -28,6 +28,9 @@ export default function Navbar() {
           <NavLink to="/history" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             History
           </NavLink>
+          <NavLink to="/reports" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Reports
+          </NavLink>
         </nav>
         <div className="nav-auth">
           {isAuthenticated ? (

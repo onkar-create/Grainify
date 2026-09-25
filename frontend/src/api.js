@@ -30,6 +30,11 @@ export const api = {
   getDistricts: () => request("/api/districts"),
   getWarehouses: () => request("/api/warehouses"),
   getScenarios: () => request("/api/scenarios"),
+  predictDemand: (scenario) =>
+    request("/api/predict-demand", {
+      method: "POST",
+      body: JSON.stringify({ scenario }),
+    }),
   runScenario: (scenario) =>
     request("/api/run-scenario", {
       method: "POST",
