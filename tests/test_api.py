@@ -47,14 +47,14 @@ def test_districts(client):
     resp = client.get("/api/districts")
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data) == 8
+    assert len(data) == 35
     assert all("population" in d for d in data)
 
 
 def test_warehouses(client):
     resp = client.get("/api/warehouses")
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    assert len(resp.json()) == 7
 
 
 def test_scenarios(client):
@@ -69,7 +69,7 @@ def test_run_scenario_success(client):
     data = resp.json()
     assert data["scenario"] == "Mild El Nino"
     assert data["total_demand"] > 0
-    assert len(data["district_results"]) == 8
+    assert len(data["district_results"]) == 35
     # equity floor: no district should be left at 0% of its demand
     for d in data["district_results"]:
         assert d["optimized_allocation"] >= 0.49 * d["demand"] - 1  # small rounding slack
@@ -91,7 +91,7 @@ def test_history_after_run(client):
     run_id = history[0]["id"]
     detail_resp = client.get(f"/api/history/{run_id}")
     assert detail_resp.status_code == 200
-    assert len(detail_resp.json()["district_results"]) == 8
+    assert len(detail_resp.json()["district_results"]) == 35
 
 
 def test_history_detail_not_found(client):

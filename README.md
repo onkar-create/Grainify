@@ -114,7 +114,7 @@ allocation (the equity floor in `src/network_optimizer.py`).
 
 | Source | Status | Details |
 |---|---|---|
-| Census district population | **Real** | `data/external/census_2011_district_population.csv` — actual Census of India 2011 figures for all 8 Maharashtra districts, sourced from the official Primary Census Abstract (mirrored on GitHub since censusindia.gov.in isn't reachable from this dev environment). Used automatically by `generate_census_data()`. |
+| Census district population | **Real** | `data/external/census_2011_district_population.csv` — actual Census of India 2011 figures for all 35 Maharashtra districts (as they existed at the 2011 Census, before Palghar was carved out of Thane in 2014), sourced from the official Primary Census Abstract (mirrored on GitHub since censusindia.gov.in isn't reachable from this dev environment). Used automatically by `generate_census_data()`. |
 | FCI stock & off-take | Synthetic | data.gov.in hosts "Daily FCI Stock Position of the Commodity", but data.gov.in/api.data.gov.in are not reachable from this environment and the full API needs a personal API key anyway. |
 | IMD rainfall | Synthetic | mausam.imd.gov.in / IMD's CDSP portal have district rainfall, same reachability issue. |
 | Agmarknet mandi arrivals/prices | Synthetic | agmarknet.gov.in's price/arrival reports are date-range form submissions, not a plain file download, on top of the same reachability issue. |
