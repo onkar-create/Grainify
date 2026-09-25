@@ -327,6 +327,15 @@ select {
 
 .table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 520px;
+}
+
+.table-wrapper thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
 }
 
 table {
@@ -399,6 +408,10 @@ thead th {
 
 .history-row:hover {
   background: var(--bg);
+}
+
+.history-row-active {
+  background: #fff7ec;
 }
 
 .history-row + .history-row {

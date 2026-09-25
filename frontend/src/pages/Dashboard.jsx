@@ -9,13 +9,19 @@ const fmtRupees = (v) => `₹${Math.round(v).toLocaleString()}`;
 
 export default function Dashboard() {
   const [scenarios, setScenarios] = useState([]);
+  const [scenariosError, setScenariosError] = useState(null);
   const [scenario, setScenario] = useState("Severe El Nino");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const loadScenarios = () => {
+    setScenariosError(null);
+    api.getScenarios().then(setScenarios).catch((e) => setScenariosError(e.message));
+  };
+
   useEffect(() => {
-    api.getScenarios().then(setScenarios).catch((e) => setError(e.message));
+    loadScenarios();
   }, []);
 
   const runScenario = async (name) => {
@@ -36,17 +42,16 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const districtData = result
-    ? result.district_results
-        .slice()
-        .sort((a, b) => b.demand - a.demand)
-        .map((d) => ({
-          district: d.district,
-          demand: Math.round(d.demand),
-          baseline: Math.round(d.baseline_allocation),
-          optimized: Math.round(d.optimized_allocation),
-        }))
+  const sortedDistricts = result
+    ? result.district_results.slice().sort((a, b) => b.demand - a.demand)
     : [];
+
+  const districtData = sortedDistricts.map((d) => ({
+    district: d.district,
+    demand: Math.round(d.demand),
+    baseline: Math.round(d.baseline_allocation),
+    optimized: Math.round(d.optimized_allocation),
+  }));
 
   return (
     <div className="container" style={{ paddingTop: 32, paddingBottom: 56 }}>
@@ -58,18 +63,47 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="control-bar">
-          <select value={scenario} onChange={(e) => setScenario(e.target.value)}>
+          <select
+            value={scenario}
+            disabled={loading || scenarios.length === 0}
+            onChange={(e) => setScenario(e.target.value)}
+          >
+            {scenarios.length === 0 && <option>Loading scenarios...</option>}
             {scenarios.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <button className="btn btn-primary" disabled={loading} onClick={() => runScenario(scenario)}>
+          <button
+            className="btn btn-primary"
+            disabled={loading || scenarios.length === 0}
+            onClick={() => runScenario(scenario)}
+          >
             {loading ? "Running..." : "Run Optimization"}
           </button>
         </div>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {scenariosError && (
+        <div className="error-banner">
+          Couldn't load scenarios: {scenariosError}{" "}
+          <button className="btn btn-ghost" style={{ padding: "4px 14px", marginLeft: 8 }} onClick={loadScenarios}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-banner">
+          {error}{" "}
+          <button
+            className="btn btn-ghost"
+            style={{ padding: "4px 14px", marginLeft: 8 }}
+            onClick={() => runScenario(scenario)}
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading && !result && (
         <div className="state">
@@ -125,7 +159,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.district_results.map((d) => (
+                  {sortedDistricts.map((d) => (
                     <tr key={d.district}>
                       <td>{d.district}</td>
                       <td>{fmtTonnes(d.demand)}</td>

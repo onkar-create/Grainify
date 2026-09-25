@@ -11,12 +11,18 @@ export default function History() {
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  useEffect(() => {
+  const loadHistory = () => {
+    setLoading(true);
+    setError(null);
     api
       .getHistory()
       .then(setRuns)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadHistory();
   }, []);
 
   const openDetail = async (id) => {
@@ -50,7 +56,14 @@ export default function History() {
         Every scenario run is saved &mdash; click a row to see its full district-level breakdown.
       </p>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div className="error-banner">
+          {error}{" "}
+          <button className="btn btn-ghost" style={{ padding: "4px 14px", marginLeft: 8 }} onClick={loadHistory}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading && (
         <div className="state">
@@ -72,7 +85,11 @@ export default function History() {
             <span>Unmet reduction</span>
           </div>
           {runs.map((r) => (
-            <div className="history-row" key={r.id} onClick={() => openDetail(r.id)}>
+            <div
+              className={`history-row${selected?.id === r.id ? " history-row-active" : ""}`}
+              key={r.id}
+              onClick={() => openDetail(r.id)}
+            >
               <span>{r.scenario}</span>
               <span>{fmtDate(r.created_at)}</span>
               <span>{r.cost_savings_pct.toFixed(1)}%</span>
