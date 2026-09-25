@@ -67,6 +67,36 @@ main {
   color: var(--primary-dark);
 }
 
+@media (max-width: 480px) {
+  .navbar-inner {
+    padding: 12px 16px;
+  }
+
+  .brand {
+    font-size: 1.05rem;
+    gap: 6px;
+  }
+
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    font-size: 0.95rem;
+  }
+
+  .nav-links {
+    gap: 0;
+  }
+
+  .nav-link {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+}
+
 /* ---------- Footer ---------- */
 .footer {
   border-top: 1px solid var(--border);

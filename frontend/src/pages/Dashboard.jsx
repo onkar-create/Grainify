@@ -37,11 +37,6 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    runScenario(scenario);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const sortedDistricts = result
     ? result.district_results.slice().sort((a, b) => b.demand - a.demand)
     : [];
@@ -109,6 +104,12 @@ export default function Dashboard() {
         <div className="state">
           <div className="spinner" />
           Forecasting demand and solving the allocation network...
+        </div>
+      )}
+
+      {!loading && !result && !error && (
+        <div className="card state">
+          Pick a scenario above and click <strong>Run Optimization</strong> to see results.
         </div>
       )}
 
