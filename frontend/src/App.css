@@ -67,9 +67,42 @@ main {
   color: var(--primary-dark);
 }
 
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.role-tag {
+  background: #fff7ec;
+  color: var(--primary-dark);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.nav-auth-btn {
+  padding: 7px 16px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 @media (max-width: 480px) {
   .navbar-inner {
     padding: 12px 16px;
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
 
   .brand {
@@ -84,6 +117,9 @@ main {
   }
 
   .nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: center;
     gap: 0;
   }
 
@@ -92,9 +128,108 @@ main {
     font-size: 0.78rem;
   }
 
+  .nav-auth {
+    order: 2;
+  }
+
+  .role-badge {
+    display: none;
+  }
+
   .container {
     padding: 0 16px;
   }
+}
+
+/* ---------- Auth pages ---------- */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding: 56px 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-card h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.subtitle-left {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  margin: -8px 0 4px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.role-select {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.role-option {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: flex-start;
+}
+
+.role-option.selected {
+  border-color: var(--primary);
+  background: #fff7ec;
+}
+
+.role-option input {
+  margin-top: 4px;
+}
+
+.role-option strong {
+  font-size: 0.92rem;
+}
+
+.role-option p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+.auth-switch {
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.auth-switch a {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /* ---------- Footer ---------- */
