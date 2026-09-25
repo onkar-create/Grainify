@@ -113,6 +113,17 @@ def get_run_detail(run_id: int, db: Session = Depends(get_db), _: models.User = 
 
 # ---------- Optimization ----------
 
+@app.post("/api/predict-demand", response_model=schemas.PredictDemandOut)
+def predict_demand_endpoint(
+    req: schemas.RunScenarioRequest,
+    _: models.User = Depends(get_current_user),
+):
+    try:
+        return services.predict_demand(req.scenario)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/run-scenario", response_model=schemas.ScenarioRunOut)
 def run_scenario_endpoint(
     req: schemas.RunScenarioRequest,

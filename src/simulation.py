@@ -32,6 +32,26 @@ def apply_scenario(snapshot: pd.DataFrame, scenario_name: str) -> pd.DataFrame:
     return df
 
 
+def predict_demand_only(scenario_name: str = "Severe El Nino") -> dict:
+    """Runs just the forecasting step (no optimization) — for the 'Predict Demand'
+    step of the workflow, before the user commits to running the full optimizer."""
+    df = get_master_dataset()
+    snapshot = _latest_district_snapshot(df)
+    scenario_df = apply_scenario(snapshot, scenario_name)
+
+    model = load_model()
+    predicted = predict_demand(model, scenario_df) * SCENARIOS[scenario_name]["demand_multiplier"]
+    demand = dict(zip(scenario_df["district"], predicted))
+    supply = _latest_warehouse_stock()
+
+    return {
+        "scenario": scenario_name,
+        "demand": demand,
+        "total_demand": sum(demand.values()),
+        "total_supply": sum(supply.values()),
+    }
+
+
 def run_scenario(scenario_name: str = "Severe El Nino") -> dict:
     df = get_master_dataset()
     snapshot = _latest_district_snapshot(df)

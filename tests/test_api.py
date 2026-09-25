@@ -116,6 +116,26 @@ def test_run_scenario_requires_auth(client):
     assert resp.status_code == 401
 
 
+def test_predict_demand_requires_auth(client):
+    resp = client.post("/api/predict-demand", json={"scenario": "Mild El Nino"})
+    assert resp.status_code == 401
+
+
+def test_predict_demand(client, token):
+    resp = client.post(
+        "/api/predict-demand", json={"scenario": "Mild El Nino"}, headers=auth_headers(token)
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["scenario"] == "Mild El Nino"
+    assert data["total_demand"] > 0
+    assert len(data["district_demand"]) == 35
+    # prediction-only: no allocation/optimization fields, no DB row written
+    assert "allocation" not in data
+    history = client.get("/api/history", headers=auth_headers(token)).json()
+    assert len(history) == 0
+
+
 def test_run_scenario_success(client, token):
     resp = client.post(
         "/api/run-scenario", json={"scenario": "Mild El Nino"}, headers=auth_headers(token)
@@ -128,6 +148,11 @@ def test_run_scenario_success(client, token):
     # equity floor: no district should be left at 0% of its demand
     for d in data["district_results"]:
         assert d["optimized_allocation"] >= 0.49 * d["demand"] - 1  # small rounding slack
+    # routes: every warehouse->district edge should carry a positive quantity
+    assert len(data["routes"]) > 0
+    for r in data["routes"]:
+        assert r["quantity"] > 0
+        assert r["warehouse"] and r["district"]
 
 
 def test_run_scenario_invalid(client, token):

@@ -49,10 +49,12 @@ def _min_cost_max_flow(supply: dict, demand: dict) -> dict:
     total_cost = nx.cost_of_flow(G, flow_dict)
 
     fulfilled = {d: 0.0 for d in demand}
+    routes = {}
     for wh in supply:
         for district, amt in flow_dict.get(wh, {}).items():
-            if district in fulfilled:
+            if district in fulfilled and amt > 0:
                 fulfilled[district] += amt
+                routes[(wh, district)] = routes.get((wh, district), 0.0) + amt
 
     warehouse_usage = {wh: flow_dict.get(SOURCE, {}).get(wh, 0.0) for wh in supply}
 
@@ -64,6 +66,7 @@ def _min_cost_max_flow(supply: dict, demand: dict) -> dict:
         "total_unmet": sum(unmet.values()),
         "total_cost": total_cost,
         "warehouse_usage": warehouse_usage,
+        "routes": routes,
     }
 
 
@@ -98,12 +101,21 @@ def optimized_allocation(supply: dict, demand: dict, min_service_level: float = 
     total_cost = stage1["cost"] + stage2["cost"]
     unmet = {d: max(0.0, demand[d] - allocation[d]) for d in demand}
 
+    routes = dict(stage1["routes"])
+    for key, amt in stage2["routes"].items():
+        routes[key] = routes.get(key, 0.0) + amt
+
     return {
         "allocation": allocation,
         "cost": total_cost,
         "unmet": unmet,
         "total_unmet": sum(unmet.values()),
         "total_cost": total_cost,
+        # {(warehouse, district): tonnes} — the actual routing plan, for the map view
+        "routes": [
+            {"warehouse": wh, "district": district, "quantity": qty}
+            for (wh, district), qty in routes.items()
+        ],
     }
 
 

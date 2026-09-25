@@ -53,6 +53,14 @@ class DistrictResultOut(BaseModel):
     optimized_unmet: float
 
 
+class AllocationRouteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    warehouse: str
+    district: str
+    quantity: float
+
+
 class ScenarioRunOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,6 +76,7 @@ class ScenarioRunOut(BaseModel):
     cost_savings_pct: float
     unmet_reduction_pct: float
     district_results: List[DistrictResultOut] = []
+    routes: List[AllocationRouteOut] = []
 
 
 class ScenarioRunSummary(BaseModel):
@@ -82,3 +91,15 @@ class ScenarioRunSummary(BaseModel):
 
 class RunScenarioRequest(BaseModel):
     scenario: str
+
+
+class DistrictDemandOut(BaseModel):
+    district: str
+    demand: float
+
+
+class PredictDemandOut(BaseModel):
+    scenario: str
+    total_demand: float
+    total_supply: float
+    district_demand: List[DistrictDemandOut]

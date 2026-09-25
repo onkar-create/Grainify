@@ -35,6 +35,9 @@ class ScenarioRun(Base):
     district_results = relationship(
         "DistrictResult", back_populates="run", cascade="all, delete-orphan"
     )
+    routes = relationship(
+        "AllocationRoute", back_populates="run", cascade="all, delete-orphan"
+    )
 
 
 class DistrictResult(Base):
@@ -51,3 +54,17 @@ class DistrictResult(Base):
     optimized_unmet = Column(Float)
 
     run = relationship("ScenarioRun", back_populates="district_results")
+
+
+class AllocationRoute(Base):
+    """One warehouse -> district edge in the optimized plan (map view, CSV export)."""
+
+    __tablename__ = "allocation_routes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(Integer, ForeignKey("scenario_runs.id"))
+    warehouse = Column(String, nullable=False)
+    district = Column(String, nullable=False)
+    quantity = Column(Float, nullable=False)
+
+    run = relationship("ScenarioRun", back_populates="routes")
