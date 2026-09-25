@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { useAuth } from "../AuthContext";
 import KpiCard from "../components/KpiCard";
 import ComparisonBarChart from "../components/ComparisonBarChart";
 import DistrictChart from "../components/DistrictChart";
@@ -9,7 +8,6 @@ const fmtTonnes = (v) => `${Math.round(v).toLocaleString()} t`;
 const fmtRupees = (v) => `₹${Math.round(v).toLocaleString()}`;
 
 export default function Dashboard() {
-  const { isOfficer } = useAuth();
   const [scenarios, setScenarios] = useState([]);
   const [scenariosError, setScenariosError] = useState(null);
   const [scenario, setScenario] = useState("Severe El Nino");
@@ -25,18 +23,6 @@ export default function Dashboard() {
   useEffect(() => {
     loadScenarios();
   }, []);
-
-  // Viewers can't trigger new runs, so show them the latest one that exists instead.
-  useEffect(() => {
-    if (isOfficer) return;
-    setLoading(true);
-    api
-      .getHistory(1)
-      .then((history) => (history.length > 0 ? api.getRunDetail(history[0].id) : null))
-      .then((data) => data && setResult(data))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [isOfficer]);
 
   const runScenario = async (name) => {
     setLoading(true);
@@ -71,29 +57,25 @@ export default function Dashboard() {
             Pick a drought severity and compare optimized vs. conventional grain allocation.
           </p>
         </div>
-        {isOfficer ? (
-          <div className="control-bar">
-            <select
-              value={scenario}
-              disabled={loading || scenarios.length === 0}
-              onChange={(e) => setScenario(e.target.value)}
-            >
-              {scenarios.length === 0 && <option>Loading scenarios...</option>}
-              {scenarios.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <button
-              className="btn btn-primary"
-              disabled={loading || scenarios.length === 0}
-              onClick={() => runScenario(scenario)}
-            >
-              {loading ? "Running..." : "Run Optimization"}
-            </button>
-          </div>
-        ) : (
-          <span className="badge">Viewer &middot; showing the latest run</span>
-        )}
+        <div className="control-bar">
+          <select
+            value={scenario}
+            disabled={loading || scenarios.length === 0}
+            onChange={(e) => setScenario(e.target.value)}
+          >
+            {scenarios.length === 0 && <option>Loading scenarios...</option>}
+            {scenarios.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <button
+            className="btn btn-primary"
+            disabled={loading || scenarios.length === 0}
+            onClick={() => runScenario(scenario)}
+          >
+            {loading ? "Running..." : "Run Optimization"}
+          </button>
+        </div>
       </div>
 
       {scenariosError && (
@@ -127,13 +109,7 @@ export default function Dashboard() {
 
       {!loading && !result && !error && (
         <div className="card state">
-          {isOfficer ? (
-            <>
-              Pick a scenario above and click <strong>Run Optimization</strong> to see results.
-            </>
-          ) : (
-            "No optimization runs yet — ask an officer to run one, or check back later."
-          )}
+          Pick a scenario above and click <strong>Run Optimization</strong> to see results.
         </div>
       )}
 

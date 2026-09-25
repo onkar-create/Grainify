@@ -7,7 +7,6 @@ export default function Register() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("viewer");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -16,7 +15,7 @@ export default function Register() {
     setError(null);
     setLoading(true);
     try {
-      await register(username, password, role);
+      await register(username, password);
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
@@ -29,7 +28,7 @@ export default function Register() {
     <div className="auth-page">
       <form className="card auth-card" onSubmit={handleSubmit}>
         <h1>Create your Grainify account</h1>
-        <p className="subtitle-left">Choose the role that matches how you'll use the dashboard.</p>
+        <p className="subtitle-left">Sign up to access the district demand dashboard and allocation optimizer.</p>
 
         {error && <div className="error-banner">{error}</div>}
 
@@ -53,35 +52,6 @@ export default function Register() {
             minLength={6}
           />
         </label>
-
-        <div className="role-select">
-          <label className={`role-option${role === "officer" ? " selected" : ""}`}>
-            <input
-              type="radio"
-              name="role"
-              value="officer"
-              checked={role === "officer"}
-              onChange={() => setRole("officer")}
-            />
-            <div>
-              <strong>Government Officer</strong>
-              <p>Can run demand forecasts and optimize grain allocation.</p>
-            </div>
-          </label>
-          <label className={`role-option${role === "viewer" ? " selected" : ""}`}>
-            <input
-              type="radio"
-              name="role"
-              value="viewer"
-              checked={role === "viewer"}
-              onChange={() => setRole("viewer")}
-            />
-            <div>
-              <strong>General Viewer</strong>
-              <p>Can view dashboards, district data and past runs (read-only).</p>
-            </div>
-          </label>
-        </div>
 
         <button className="btn btn-primary" disabled={loading} type="submit">
           {loading ? "Creating account..." : "Create account"}

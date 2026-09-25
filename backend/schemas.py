@@ -10,20 +10,11 @@ class UserOut(BaseModel):
 
     id: int
     username: str
-    role: str
 
 
 class RegisterRequest(BaseModel):
     username: str
     password: str
-    role: str = "viewer"
-
-    @field_validator("role")
-    @classmethod
-    def validate_role(cls, v):
-        if v not in ("officer", "viewer"):
-            raise ValueError('role must be "officer" or "viewer"')
-        return v
 
     @field_validator("username")
     @classmethod

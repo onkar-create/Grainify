@@ -16,8 +16,8 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
-  const register = useCallback(async (username, password, role) => {
-    const data = await api.register(username, password, role);
+  const register = useCallback(async (username, password) => {
+    const data = await api.register(username, password);
     setSession(data.access_token, data.user);
     setToken(data.access_token);
     setUser(data.user);
@@ -33,7 +33,6 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     isAuthenticated: !!token,
-    isOfficer: user?.role === "officer",
     login,
     register,
     logout,

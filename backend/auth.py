@@ -19,8 +19,6 @@ import bcrypt
 SECRET_KEY = os.environ.get("GRAINIFY_SECRET_KEY", "dev-secret-change-in-production")
 ACCESS_TOKEN_EXPIRE_SECONDS = 60 * 60 * 24  # 1 day
 
-ROLES = ("officer", "viewer")
-
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")

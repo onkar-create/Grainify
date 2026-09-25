@@ -45,12 +45,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
-def require_officer(user: models.User = Depends(get_current_user)) -> models.User:
-    if user.role != "officer":
-        raise HTTPException(status_code=403, detail="Officer role required for this action")
-    return user
-
-
 # ---------- Auth ----------
 
 @app.post("/api/auth/register", response_model=schemas.TokenResponse)
@@ -60,7 +54,6 @@ def register(req: schemas.RegisterRequest, db: Session = Depends(get_db)):
     user = models.User(
         username=req.username,
         hashed_password=auth.hash_password(req.password),
-        role=req.role,
     )
     db.add(user)
     db.commit()
@@ -118,13 +111,13 @@ def get_run_detail(run_id: int, db: Session = Depends(get_db), _: models.User = 
     return run
 
 
-# ---------- Optimization (officer only) ----------
+# ---------- Optimization ----------
 
 @app.post("/api/run-scenario", response_model=schemas.ScenarioRunOut)
 def run_scenario_endpoint(
     req: schemas.RunScenarioRequest,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_officer),
+    _: models.User = Depends(get_current_user),
 ):
     try:
         run = services.execute_and_save_scenario(db, req.scenario)
