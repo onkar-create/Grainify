@@ -9,6 +9,14 @@ import { downloadDistributionPlanCsv } from "../csvExport";
 const fmtTonnes = (v) => `${Math.round(v).toLocaleString()} t`;
 const fmtRupees = (v) => `₹${Math.round(v).toLocaleString()}`;
 
+function districtStatus(d) {
+  if (d.demand <= 0) return { emoji: "🟢", label: "Surplus" };
+  const unmetPct = d.optimized_unmet / d.demand;
+  if (unmetPct <= 0.02) return { emoji: "🟢", label: "Surplus" };
+  if (unmetPct <= 0.2) return { emoji: "🟡", label: "Moderate" };
+  return { emoji: "🔴", label: "Deficit" };
+}
+
 export default function Dashboard() {
   const [scenarios, setScenarios] = useState([]);
   const [scenariosError, setScenariosError] = useState(null);
@@ -95,14 +103,14 @@ export default function Dashboard() {
         <div>
           <h1 style={{ margin: "0 0 6px", fontSize: "1.7rem" }}>Scenario Dashboard</h1>
           <p style={{ color: "var(--text-muted)" }}>
-            Step 0: pick a region. Step 1: predict demand. Step 2: optimize grain allocation against it.
+            Select Region &rarr; Predict Demand &rarr; Supply-Demand Analysis &rarr; Optimize Distribution &rarr; Optimized Routes Map &rarr; Impact Analysis &rarr; Generate Report
           </p>
         </div>
       </div>
 
       <div className="card region-bar" style={{ marginBottom: 20 }}>
         <div className="field" style={{ minWidth: 220 }}>
-          0. Select Region / District
+          Select Region
           <select value={selectedDistrict} onChange={(e) => setSelectedDistrict(e.target.value)}>
             <option value="">All Maharashtra (35 districts)</option>
             {districts.map((d) => (
@@ -126,7 +134,7 @@ export default function Dashboard() {
             disabled={predicting || scenarios.length === 0}
             onClick={predictDemand}
           >
-            {predicting ? "Predicting..." : "1. Predict Demand"}
+            {predicting ? "Predicting..." : "Predict Demand"}
           </button>
         </div>
       </div>
@@ -216,14 +224,14 @@ export default function Dashboard() {
         <div className="card chart-card" style={{ marginBottom: 24 }}>
           <div className="predict-header">
             <div>
-              <h3 style={{ margin: "0 0 4px" }}>Step 1 result: predicted demand</h3>
+              <h3 style={{ margin: "0 0 4px" }}>Demand Forecast</h3>
               <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: 0 }}>
                 {fmtTonnes(prediction.total_demand)} needed across 35 districts &middot; {fmtTonnes(prediction.total_supply)} available in warehouses
               </p>
             </div>
             {!result && (
               <button className="btn btn-primary" disabled={optimizing} onClick={optimizeDistribution}>
-                {optimizing ? "Optimizing..." : "2. Optimize Distribution"}
+                {optimizing ? "Optimizing..." : "Optimize Distribution"}
               </button>
             )}
           </div>
@@ -257,6 +265,7 @@ export default function Dashboard() {
 
       {result && (
         <>
+          <h2 style={{ fontSize: "1.15rem", margin: "0 0 12px" }}>Impact Analysis: Before vs. After Grainify</h2>
           <div className="kpi-grid">
             <KpiCard label="Total predicted demand" value={fmtTonnes(result.total_demand)} />
             <KpiCard label="Total warehouse supply" value={fmtTonnes(result.total_supply)} />
@@ -284,7 +293,7 @@ export default function Dashboard() {
           </div>
 
           <div className="card chart-card" style={{ marginBottom: 24 }}>
-            <h3>Allocation map</h3>
+            <h3>Optimized Routes Map</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: -8, marginBottom: 12 }}>
               Districts shaded by unmet demand severity (darker = more shortage). Lines show the
               optimized warehouse &rarr; district routing plan.
@@ -303,12 +312,18 @@ export default function Dashboard() {
             <DistrictChart data={districtData} />
           </div>
 
-          <div className="card" style={{ marginBottom: 24 }}>
+          <div className="card chart-card" style={{ marginBottom: 24 }}>
+            <h3>Supply-Demand Analysis</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: -8, marginBottom: 12 }}>
+              🟢 Surplus/met &middot; 🟡 Moderate shortage &middot; 🔴 Critical deficit &mdash; status is based on
+              unmet demand after optimized distribution.
+            </p>
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
                     <th>District</th>
+                    <th>Status</th>
                     <th>Demand</th>
                     <th>Baseline alloc.</th>
                     <th>Baseline unmet</th>
@@ -317,23 +332,27 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedDistricts.map((d) => (
-                    <tr key={d.district} className={d.district === selectedDistrict ? "table-row-highlight" : ""}>
-                      <td>{d.district}</td>
-                      <td>{fmtTonnes(d.demand)}</td>
-                      <td>{fmtTonnes(d.baseline_allocation)}</td>
-                      <td>{fmtTonnes(d.baseline_unmet)}</td>
-                      <td>{fmtTonnes(d.optimized_allocation)}</td>
-                      <td>{fmtTonnes(d.optimized_unmet)}</td>
-                    </tr>
-                  ))}
+                  {sortedDistricts.map((d) => {
+                    const status = districtStatus(d);
+                    return (
+                      <tr key={d.district} className={d.district === selectedDistrict ? "table-row-highlight" : ""}>
+                        <td>{d.district}</td>
+                        <td>{status.emoji} {status.label}</td>
+                        <td>{fmtTonnes(d.demand)}</td>
+                        <td>{fmtTonnes(d.baseline_allocation)}</td>
+                        <td>{fmtTonnes(d.baseline_unmet)}</td>
+                        <td>{fmtTonnes(d.optimized_allocation)}</td>
+                        <td>{fmtTonnes(d.optimized_unmet)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
           <button className="btn btn-ghost" onClick={() => downloadDistributionPlanCsv(result)}>
-            Download Distribution Plan (CSV)
+            Generate Report (CSV)
           </button>
         </>
       )}
