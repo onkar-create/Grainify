@@ -32,6 +32,7 @@ export default function Dashboard() {
 
   const [districts, setDistricts] = useState([]);
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [warehouses, setWarehouses] = useState([]);
 
   const loadScenarios = () => {
     setScenariosError(null);
@@ -41,7 +42,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadScenarios();
     api.getDistricts().then(setDistricts).catch(() => {});
+    api.getWarehouses().then(setWarehouses).catch(() => {});
   }, []);
+
+  const totalStockCapacity = warehouses.reduce((s, w) => s + w.capacity_tonnes, 0);
+  const districtsAtRisk = result
+    ? result.district_results.filter((d) => districtStatus(d).label !== "Surplus").length
+    : null;
 
   const handleScenarioChange = (name) => {
     setScenario(name);
@@ -106,6 +113,16 @@ export default function Dashboard() {
             Select Region &rarr; Predict Demand &rarr; Supply-Demand Analysis &rarr; Optimize Distribution &rarr; Optimized Routes Map &rarr; Impact Analysis &rarr; Generate Report
           </p>
         </div>
+      </div>
+
+      <div className="kpi-grid" style={{ marginBottom: 20 }}>
+        <KpiCard label="Total warehouses" value={warehouses.length || "—"} />
+        <KpiCard label="Total warehouse stock" value={warehouses.length ? fmtTonnes(totalStockCapacity) : "—"} />
+        <KpiCard label="Districts covered" value={districts.length || "—"} />
+        <KpiCard
+          label="Districts at risk"
+          value={districtsAtRisk === null ? "Pending" : districtsAtRisk}
+        />
       </div>
 
       <div className="card region-bar" style={{ marginBottom: 20 }}>
