@@ -7,6 +7,13 @@ import { WAREHOUSE_COORDS, modelDistrictsFor, geoJsonDistrictFor } from "../mapD
 // = near-zero unmet demand, darkest = most severe shortage.
 const UNMET_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"];
 
+// Keeps the map locked to Maharashtra so the basemap can't be panned/zoomed out
+// into neighbouring states (e.g. Rajasthan city labels showing up).
+const MAHARASHTRA_BOUNDS = [
+  [14.8, 71.8],
+  [22.3, 81.2],
+];
+
 function unmetColor(unmetPct) {
   const step = Math.min(UNMET_RAMP.length - 1, Math.floor(unmetPct * UNMET_RAMP.length));
   return UNMET_RAMP[Math.max(0, step)];
@@ -126,7 +133,16 @@ export default function AllocationMap({ result, districts = [], focusDistrict = 
 
   return (
     <div className="map-wrapper">
-      <MapContainer center={[19.4, 76.5]} zoom={6} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+      <MapContainer
+        center={[19.4, 76.5]}
+        zoom={6}
+        minZoom={6}
+        maxZoom={11}
+        scrollWheelZoom={false}
+        maxBounds={MAHARASHTRA_BOUNDS}
+        maxBoundsViscosity={1.0}
+        style={{ height: "100%", width: "100%" }}
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
