@@ -9,6 +9,10 @@ import { downloadDistributionPlanCsv } from "../csvExport";
 const fmtTonnes = (v) => `${Math.round(v).toLocaleString()} t`;
 const fmtRupees = (v) => `₹${Math.round(v).toLocaleString()}`;
 
+// Mirrors src/config.py COST_PER_TONNE_PER_KM — used to estimate transport cost
+// for a single district client-side from quantity + distance, without a new API.
+const COST_PER_TONNE_PER_KM = 2.5;
+
 function districtStatus(d) {
   if (d.demand <= 0) return { emoji: "🟢", label: "Surplus" };
   const unmetPct = d.optimized_unmet / d.demand;
@@ -33,6 +37,7 @@ export default function Dashboard() {
   const [districts, setDistricts] = useState([]);
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [warehouses, setWarehouses] = useState([]);
+  const [showMaharashtraCharts, setShowMaharashtraCharts] = useState(false);
 
   const loadScenarios = () => {
     setScenariosError(null);
@@ -86,7 +91,11 @@ export default function Dashboard() {
   };
 
   const sortedDistricts = result
-    ? result.district_results.slice().sort((a, b) => b.demand - a.demand)
+    ? result.district_results.slice().sort((a, b) => {
+        if (a.district === selectedDistrict) return -1;
+        if (b.district === selectedDistrict) return 1;
+        return b.demand - a.demand;
+      })
     : [];
 
   const districtData = sortedDistricts.map((d) => ({
@@ -104,6 +113,25 @@ export default function Dashboard() {
   const districtResult = result?.district_results.find((d) => d.district === selectedDistrict);
   const districtPrediction = prediction?.district_demand.find((d) => d.district === selectedDistrict);
 
+  const warehouseCapacityByName = Object.fromEntries(warehouses.map((w) => [w.name, w.capacity_tonnes]));
+  const availableSupplyForDistrict = districtInfo
+    ? districtInfo.serving_warehouses.reduce((s, w) => s + (warehouseCapacityByName[w.warehouse] || 0), 0)
+    : null;
+
+  const districtRoutes = (result?.routes || []).filter((r) => r.district === selectedDistrict);
+  const nearestWarehouseKm = districtInfo?.serving_warehouses?.[0]?.distance_km ?? null;
+  const distanceByWarehouse = Object.fromEntries(
+    (districtInfo?.serving_warehouses || []).map((w) => [w.warehouse, w.distance_km])
+  );
+  const optimizedDistrictCost = districtRoutes.reduce((sum, r) => {
+    const km = distanceByWarehouse[r.warehouse];
+    return sum + (km != null ? r.quantity * km * COST_PER_TONNE_PER_KM : 0);
+  }, 0);
+  const baselineDistrictCostApprox =
+    nearestWarehouseKm != null && districtResult
+      ? districtResult.baseline_allocation * nearestWarehouseKm * COST_PER_TONNE_PER_KM
+      : null;
+
   return (
     <div className="container" style={{ paddingTop: 32, paddingBottom: 56 }}>
       <div className="dashboard-header">
@@ -115,6 +143,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase" }}>
+        Maharashtra Overview
+      </div>
       <div className="kpi-grid" style={{ marginBottom: 20 }}>
         <KpiCard label="Total warehouses" value={warehouses.length || "—"} />
         <KpiCard label="Total warehouse stock" value={warehouses.length ? fmtTonnes(totalStockCapacity) : "—"} />
@@ -124,6 +155,32 @@ export default function Dashboard() {
           value={districtsAtRisk === null ? "Pending" : districtsAtRisk}
         />
       </div>
+
+      {selectedDistrict && (
+        <>
+          <div style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--primary-dark)", marginBottom: 8, textTransform: "uppercase" }}>
+            {selectedDistrict} &mdash; Selected District
+          </div>
+          <div className="kpi-grid" style={{ marginBottom: 20 }}>
+            <KpiCard
+              label="Predicted demand"
+              value={districtResult ? fmtTonnes(districtResult.demand) : districtPrediction ? fmtTonnes(districtPrediction.demand) : "Pending"}
+            />
+            <KpiCard
+              label="Available supply (nearby warehouses)"
+              value={availableSupplyForDistrict != null ? fmtTonnes(availableSupplyForDistrict) : "—"}
+            />
+            <KpiCard
+              label="Optimized allocation"
+              value={districtResult ? fmtTonnes(districtResult.optimized_allocation) : "Pending"}
+            />
+            <KpiCard
+              label="Unmet demand"
+              value={districtResult ? fmtTonnes(districtResult.optimized_unmet) : "Pending"}
+            />
+          </div>
+        </>
+      )}
 
       <div className="card region-bar" style={{ marginBottom: 20 }}>
         <div className="field" style={{ minWidth: 220 }}>
@@ -172,6 +229,12 @@ export default function Dashboard() {
                       .map((w) => `${w.warehouse.replace("WH_", "")} (${w.distance_km} km)`)
                       .join(", ")
                   : "none configured"}
+              </span>
+            </div>
+            <div className="profile-item">
+              <span className="profile-label">Available supply (nearby warehouses)</span>
+              <span className="profile-value">
+                {availableSupplyForDistrict != null ? fmtTonnes(availableSupplyForDistrict) : "n/a"}
               </span>
             </div>
             {districtResult ? (
@@ -241,9 +304,13 @@ export default function Dashboard() {
         <div className="card chart-card" style={{ marginBottom: 24 }}>
           <div className="predict-header">
             <div>
-              <h3 style={{ margin: "0 0 4px" }}>Demand Forecast</h3>
+              <h3 style={{ margin: "0 0 4px" }}>
+                {selectedDistrict ? `${selectedDistrict} Demand Forecast` : "Maharashtra Demand Forecast"}
+              </h3>
               <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: 0 }}>
-                {fmtTonnes(prediction.total_demand)} needed across 35 districts &middot; {fmtTonnes(prediction.total_supply)} available in warehouses
+                {selectedDistrict && districtPrediction
+                  ? `Predicted demand for ${selectedDistrict}: ${fmtTonnes(districtPrediction.demand)}`
+                  : `${fmtTonnes(prediction.total_demand)} needed across 35 districts · ${fmtTonnes(prediction.total_supply)} available in warehouses`}
               </p>
             </div>
             {!result && (
@@ -262,13 +329,37 @@ export default function Dashboard() {
             </div>
           )}
 
-          {!result && (
+          {!result && selectedDistrict && districtPrediction ? (
             <div style={{ marginTop: 16 }}>
               <DistrictChart
-                data={sortedPredictedDistricts.map((d) => ({ district: d.district, demand: Math.round(d.demand) }))}
+                data={[{ district: selectedDistrict, demand: Math.round(districtPrediction.demand) }]}
                 seriesKeys={["demand"]}
               />
+              <button
+                className="btn btn-ghost"
+                style={{ marginTop: 12 }}
+                onClick={() => setShowMaharashtraCharts((v) => !v)}
+              >
+                {showMaharashtraCharts ? "Hide" : "Show"} Maharashtra-wide demand forecast
+              </button>
+              {showMaharashtraCharts && (
+                <div style={{ marginTop: 16 }}>
+                  <DistrictChart
+                    data={sortedPredictedDistricts.map((d) => ({ district: d.district, demand: Math.round(d.demand) }))}
+                    seriesKeys={["demand"]}
+                  />
+                </div>
+              )}
             </div>
+          ) : (
+            !result && (
+              <div style={{ marginTop: 16 }}>
+                <DistrictChart
+                  data={sortedPredictedDistricts.map((d) => ({ district: d.district, demand: Math.round(d.demand) }))}
+                  seriesKeys={["demand"]}
+                />
+              </div>
+            )
           )}
         </div>
       )}
@@ -309,6 +400,44 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {selectedDistrict && districtResult && (
+            <div className="card chart-card" style={{ marginBottom: 24 }}>
+              <h3>{selectedDistrict} District Impact</h3>
+              <div className="district-profile-grid">
+                <div className="profile-item">
+                  <span className="profile-label">Demand</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.demand)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Allocation before</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.baseline_allocation)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Allocation after</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.optimized_allocation)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Unmet before</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.baseline_unmet)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Unmet after</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.optimized_unmet)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Cost before (est., nearest warehouse)</span>
+                  <span className="profile-value">
+                    {baselineDistrictCostApprox != null ? `≈ ${fmtRupees(baselineDistrictCostApprox)}` : "—"}
+                  </span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Cost after (optimized routes)</span>
+                  <span className="profile-value">{fmtRupees(optimizedDistrictCost)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card chart-card" style={{ marginBottom: 24 }}>
             <h3>Optimized Routes Map</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: -8, marginBottom: 12 }}>
@@ -325,8 +454,32 @@ export default function Dashboard() {
           </div>
 
           <div className="card chart-card" style={{ marginBottom: 24 }}>
-            <h3>District-level allocation</h3>
-            <DistrictChart data={districtData} />
+            <h3>
+              {selectedDistrict
+                ? `${selectedDistrict} Allocation — Before vs After Grainify`
+                : "District-level allocation"}
+            </h3>
+            {selectedDistrict && districtResult ? (
+              <>
+                <DistrictChart
+                  data={districtData.filter((d) => d.district === selectedDistrict)}
+                />
+                <button
+                  className="btn btn-ghost"
+                  style={{ marginTop: 12 }}
+                  onClick={() => setShowMaharashtraCharts((v) => !v)}
+                >
+                  {showMaharashtraCharts ? "Hide" : "Show"} Maharashtra-wide allocation chart
+                </button>
+                {showMaharashtraCharts && (
+                  <div style={{ marginTop: 16 }}>
+                    <DistrictChart data={districtData} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <DistrictChart data={districtData} />
+            )}
           </div>
 
           <div className="card chart-card" style={{ marginBottom: 24 }}>

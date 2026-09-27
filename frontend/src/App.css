@@ -653,3 +653,11 @@ thead th {
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
+
+.warehouse-marker-dot-active {
+  width: 32px;
+  height: 32px;
+  background: #b45309;
+  border: 3px solid #fff7ec;
+  box-shadow: 0 0 0 3px #b45309, 0 2px 6px rgba(0, 0, 0, 0.4);
+}

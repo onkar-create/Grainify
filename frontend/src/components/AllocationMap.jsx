@@ -19,12 +19,16 @@ function unmetColor(unmetPct) {
   return UNMET_RAMP[Math.max(0, step)];
 }
 
-function warehouseIcon() {
+// Mirrors src/config.py COST_PER_TONNE_PER_KM — used to estimate a route's
+// transport cost client-side from quantity + distance, without a new API.
+const COST_PER_TONNE_PER_KM = 2.5;
+
+function warehouseIcon(active = false) {
   return L.divIcon({
     className: "warehouse-marker",
-    html: `<div class="warehouse-marker-dot">W</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    html: `<div class="warehouse-marker-dot${active ? " warehouse-marker-dot-active" : ""}">W</div>`,
+    iconSize: active ? [32, 32] : [26, 26],
+    iconAnchor: active ? [16, 16] : [13, 13],
   });
 }
 
@@ -90,14 +94,35 @@ export default function AllocationMap({ result, districts = [], focusDistrict = 
 
   const focusGeoName = focusDistrict ? geoJsonDistrictFor(focusDistrict) : null;
 
+  // Distances (km) for every warehouse that serves each district, sourced from
+  // the districts prop's serving_warehouses list — used to estimate a route's
+  // transport cost in its popup without adding a new API call.
+  const distanceLookup = useMemo(() => {
+    const map = {};
+    for (const d of districts) {
+      for (const w of d.serving_warehouses || []) {
+        map[`${w.warehouse}|${d.name}`] = w.distance_km;
+      }
+    }
+    return map;
+  }, [districts]);
+
+  const warehousesServingFocus = useMemo(() => {
+    if (!focusDistrict || !result) return new Set();
+    return new Set(result.routes.filter((r) => r.district === focusDistrict).map((r) => r.warehouse));
+  }, [focusDistrict, result]);
+
   const style = (feature) => {
     const isFocused = feature.properties.district === focusGeoName;
     const stats = districtStats[feature.properties.district];
     const base = !stats || stats.demand <= 0
       ? { fillColor: "#e7e2d6", fillOpacity: 0.6 }
       : { fillColor: unmetColor(stats.optimized_unmet / stats.demand), fillOpacity: 0.75 };
+    if (focusGeoName && !isFocused) {
+      base.fillOpacity = Math.min(base.fillOpacity, 0.3);
+    }
     return isFocused
-      ? { ...base, weight: 3, color: "#b45309" }
+      ? { ...base, fillOpacity: 0.85, weight: 3, color: "#b45309" }
       : { ...base, weight: 1, color: "#fff" };
   };
 
@@ -159,7 +184,7 @@ export default function AllocationMap({ result, districts = [], focusDistrict = 
           />
         )}
         {Object.entries(WAREHOUSE_COORDS).map(([wh, coords]) => (
-          <Marker key={wh} position={coords} icon={warehouseIcon()}>
+          <Marker key={wh} position={coords} icon={warehouseIcon(warehousesServingFocus.has(wh))}>
             <Popup>
               <strong>{wh.replace("WH_", "")}</strong> warehouse
               {result && (
@@ -185,16 +210,45 @@ export default function AllocationMap({ result, districts = [], focusDistrict = 
               const to = districtCenters[geoName];
               const from = WAREHOUSE_COORDS[wh];
               if (!to || !from) return null;
-              const weight = Math.min(8, 1 + r.quantity / 1500);
+
+              const isFocusedRoute = focusDistrict != null && r.district === focusDistrict;
+              const dimmed = focusDistrict != null && !isFocusedRoute;
+              const km = distanceLookup[`${wh}|${r.district}`];
+              const cost = km != null ? r.quantity * km * COST_PER_TONNE_PER_KM : null;
+              const weight = isFocusedRoute
+                ? Math.min(10, 2 + r.quantity / 1200)
+                : Math.min(8, 1 + r.quantity / 1500);
+
               return (
                 <Polyline
                   key={`${wh}-${r.district}`}
                   positions={[from, to]}
-                  pathOptions={{ color: "#b45309", weight, opacity: 0.55 }}
+                  pathOptions={{
+                    color: "#b45309",
+                    weight,
+                    opacity: dimmed ? 0.15 : isFocusedRoute ? 0.9 : 0.55,
+                  }}
                 >
                   <Tooltip sticky>
                     {wh.replace("WH_", "")} &rarr; {r.district}: {Math.round(r.quantity).toLocaleString()} t
                   </Tooltip>
+                  <Popup>
+                    <strong>{wh.replace("WH_", "")}</strong> &rarr; <strong>{r.district}</strong>
+                    <br />
+                    Quantity: {Math.round(r.quantity).toLocaleString()} t
+                    {km != null && (
+                      <>
+                        <br />
+                        Distance: {km} km
+                      </>
+                    )}
+                    {cost != null && (
+                      <>
+                        <br />
+                        Transport cost: &#8377;{Math.round(cost).toLocaleString()}
+                      </>
+                    )}
+                  </Popup>
                 </Polyline>
               );
             })
