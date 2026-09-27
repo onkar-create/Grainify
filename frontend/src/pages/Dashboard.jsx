@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [optimizeError, setOptimizeError] = useState(null);
 
   const [districts, setDistricts] = useState([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("");
 
   const loadScenarios = () => {
     setScenariosError(null);
@@ -84,14 +85,30 @@ export default function Dashboard() {
     ? prediction.district_demand.slice().sort((a, b) => b.demand - a.demand)
     : [];
 
+  const districtInfo = districts.find((d) => d.name === selectedDistrict);
+  const districtResult = result?.district_results.find((d) => d.district === selectedDistrict);
+  const districtPrediction = prediction?.district_demand.find((d) => d.district === selectedDistrict);
+
   return (
     <div className="container" style={{ paddingTop: 32, paddingBottom: 56 }}>
       <div className="dashboard-header">
         <div>
           <h1 style={{ margin: "0 0 6px", fontSize: "1.7rem" }}>Scenario Dashboard</h1>
           <p style={{ color: "var(--text-muted)" }}>
-            Step 1: predict demand for a drought scenario. Step 2: optimize grain allocation against it.
+            Step 0: pick a region. Step 1: predict demand. Step 2: optimize grain allocation against it.
           </p>
+        </div>
+      </div>
+
+      <div className="card region-bar" style={{ marginBottom: 20 }}>
+        <div className="field" style={{ minWidth: 220 }}>
+          0. Select Region / District
+          <select value={selectedDistrict} onChange={(e) => setSelectedDistrict(e.target.value)}>
+            <option value="">All Maharashtra (35 districts)</option>
+            {districts.map((d) => (
+              <option key={d.name} value={d.name}>{d.name}</option>
+            ))}
+          </select>
         </div>
         <div className="control-bar">
           <select
@@ -113,6 +130,56 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {selectedDistrict && districtInfo && (
+        <div className="card district-profile" style={{ marginBottom: 24 }}>
+          <h3 style={{ margin: "0 0 12px" }}>{selectedDistrict} district profile</h3>
+          <div className="district-profile-grid">
+            <div className="profile-item">
+              <span className="profile-label">Population</span>
+              <span className="profile-value">{districtInfo.population.toLocaleString()}</span>
+            </div>
+            <div className="profile-item">
+              <span className="profile-label">Nearby warehouses</span>
+              <span className="profile-value">
+                {districtInfo.serving_warehouses.length
+                  ? districtInfo.serving_warehouses
+                      .map((w) => `${w.warehouse.replace("WH_", "")} (${w.distance_km} km)`)
+                      .join(", ")
+                  : "none configured"}
+              </span>
+            </div>
+            {districtResult ? (
+              <>
+                <div className="profile-item">
+                  <span className="profile-label">Predicted demand</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.demand)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Optimized allocation</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.optimized_allocation)}</span>
+                </div>
+                <div className="profile-item">
+                  <span className="profile-label">Unmet demand</span>
+                  <span className="profile-value">{fmtTonnes(districtResult.optimized_unmet)}</span>
+                </div>
+              </>
+            ) : districtPrediction ? (
+              <div className="profile-item">
+                <span className="profile-label">Predicted demand</span>
+                <span className="profile-value">{fmtTonnes(districtPrediction.demand)}</span>
+              </div>
+            ) : (
+              <div className="profile-item">
+                <span className="profile-label">Demand / allocation</span>
+                <span className="profile-value" style={{ color: "var(--text-muted)" }}>
+                  Run Predict Demand to see this district's forecast
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {scenariosError && (
         <div className="error-banner">
@@ -222,7 +289,7 @@ export default function Dashboard() {
               Districts shaded by unmet demand severity (darker = more shortage). Lines show the
               optimized warehouse &rarr; district routing plan.
             </p>
-            <AllocationMap result={result} districts={districts} />
+            <AllocationMap result={result} districts={districts} focusDistrict={selectedDistrict || null} />
             <div className="map-legend">
               <span>Unmet demand:</span>
               <span className="map-legend-swatch" style={{ background: "#cde2fb" }} /> Low
@@ -251,7 +318,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {sortedDistricts.map((d) => (
-                    <tr key={d.district}>
+                    <tr key={d.district} className={d.district === selectedDistrict ? "table-row-highlight" : ""}>
                       <td>{d.district}</td>
                       <td>{fmtTonnes(d.demand)}</td>
                       <td>{fmtTonnes(d.baseline_allocation)}</td>

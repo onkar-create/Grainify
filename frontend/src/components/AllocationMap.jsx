@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, Marker, Polyline, Tooltip, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Polyline, Tooltip, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { WAREHOUSE_COORDS, modelDistrictsFor } from "../mapData";
+import { WAREHOUSE_COORDS, modelDistrictsFor, geoJsonDistrictFor } from "../mapData";
 
 // Validated sequential blue ramp (dataviz skill palette, steps 100-700): lightest
 // = near-zero unmet demand, darkest = most severe shortage.
@@ -21,7 +21,15 @@ function warehouseIcon() {
   });
 }
 
-export default function AllocationMap({ result, districts = [] }) {
+function FlyToDistrict({ target }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.flyTo(target, 8, { duration: 1 });
+  }, [target, map]);
+  return null;
+}
+
+export default function AllocationMap({ result, districts = [], focusDistrict = null }) {
   const [geoData, setGeoData] = useState(null);
   const [districtCenters, setDistrictCenters] = useState({});
   const geoJsonRef = useRef(null);
@@ -73,19 +81,23 @@ export default function AllocationMap({ result, districts = [] }) {
     return grouped;
   }, [result]);
 
+  const focusGeoName = focusDistrict ? geoJsonDistrictFor(focusDistrict) : null;
+
   const style = (feature) => {
+    const isFocused = feature.properties.district === focusGeoName;
     const stats = districtStats[feature.properties.district];
-    if (!stats || stats.demand <= 0) {
-      return { fillColor: "#e7e2d6", weight: 1, color: "#fff", fillOpacity: 0.6 };
-    }
-    const unmetPct = stats.optimized_unmet / stats.demand;
-    return {
-      fillColor: unmetColor(unmetPct),
-      weight: 1,
-      color: "#fff",
-      fillOpacity: 0.75,
-    };
+    const base = !stats || stats.demand <= 0
+      ? { fillColor: "#e7e2d6", fillOpacity: 0.6 }
+      : { fillColor: unmetColor(stats.optimized_unmet / stats.demand), fillOpacity: 0.75 };
+    return isFocused
+      ? { ...base, weight: 3, color: "#b45309" }
+      : { ...base, weight: 1, color: "#fff" };
   };
+
+  useEffect(() => {
+    geoJsonRef.current?.setStyle(style);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusGeoName, districtStats]);
 
   const onEachFeature = (feature, layer) => {
     const name = feature.properties.district;
@@ -119,6 +131,9 @@ export default function AllocationMap({ result, districts = [] }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {focusGeoName && districtCenters[focusGeoName] && (
+          <FlyToDistrict target={districtCenters[focusGeoName]} />
+        )}
         {geoData && (
           <GeoJSON
             ref={geoJsonRef}

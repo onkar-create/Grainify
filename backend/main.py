@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from backend import auth
 from backend.database import Base, engine, get_db
 from backend import models, schemas, services
-from src.config import DISTRICTS, WAREHOUSES
+from src.config import DISTRICTS, WAREHOUSES, WAREHOUSE_DISTRICT_DISTANCE_KM
 
 Base.metadata.create_all(bind=engine)
 
@@ -80,7 +80,16 @@ def me(user: models.User = Depends(get_current_user)):
 
 @app.get("/api/districts")
 def get_districts(_: models.User = Depends(get_current_user)):
-    return [{"name": name, **meta} for name, meta in DISTRICTS.items()]
+    serving_warehouses = {name: [] for name in DISTRICTS}
+    for wh, districts in WAREHOUSE_DISTRICT_DISTANCE_KM.items():
+        for district, km in districts.items():
+            if district in serving_warehouses:
+                serving_warehouses[district].append({"warehouse": wh, "distance_km": km})
+
+    return [
+        {"name": name, **meta, "serving_warehouses": sorted(serving_warehouses[name], key=lambda w: w["distance_km"])}
+        for name, meta in DISTRICTS.items()
+    ]
 
 
 @app.get("/api/warehouses")

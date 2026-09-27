@@ -22,3 +22,12 @@ export const GEOJSON_TO_MODEL_DISTRICTS = {
 export function modelDistrictsFor(geoJsonDistrictName) {
   return GEOJSON_TO_MODEL_DISTRICTS[geoJsonDistrictName] || [geoJsonDistrictName];
 }
+
+// Reverse of the above: given a model district name (e.g. "Mumbai Suburban"),
+// which GeoJSON polygon represents it on the map (e.g. "Mumbai").
+export function geoJsonDistrictFor(modelDistrictName) {
+  for (const [geoName, modelNames] of Object.entries(GEOJSON_TO_MODEL_DISTRICTS)) {
+    if (modelNames.includes(modelDistrictName)) return geoName;
+  }
+  return modelDistrictName;
+}
