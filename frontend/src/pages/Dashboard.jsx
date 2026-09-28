@@ -377,9 +377,29 @@ export default function Dashboard() {
           <div className="kpi-grid">
             <KpiCard label="Total predicted demand" value={fmtTonnes(result.total_demand)} />
             <KpiCard label="Total warehouse supply" value={fmtTonnes(result.total_supply)} />
-            <KpiCard label="Cost reduction vs. baseline" value={`${result.cost_savings_pct.toFixed(1)}%`} positive />
-            <KpiCard label="Unmet demand reduction" value={`${result.unmet_reduction_pct.toFixed(1)}%`} positive />
+            <KpiCard
+              label="Cost reduction vs. baseline"
+              value={`${result.cost_savings_pct.toFixed(1)}%`}
+              positive={result.cost_savings_pct > 0}
+              negative={result.cost_savings_pct < 0}
+            />
+            <KpiCard
+              label="Unmet demand reduction"
+              value={`${result.unmet_reduction_pct.toFixed(1)}%`}
+              positive={result.unmet_reduction_pct > 0}
+              negative={result.unmet_reduction_pct < 0}
+            />
           </div>
+
+          {result.cost_savings_pct < 0 && (
+            <div className="error-banner" style={{ marginBottom: 20, background: "#fff7ec", borderColor: "#fde3b8", color: "var(--primary-dark)" }}>
+              Transport cost is higher than baseline this run because supply ({fmtTonnes(result.total_supply)}) falls
+              short of demand ({fmtTonnes(result.total_demand)}). Grainify's equity floor guarantees every district at
+              least 50% of its demand before optimizing further, even if that means reaching a far, expensive
+              district the baseline would have simply shorted. This is the deliberate cost of fairness, not an
+              error &mdash; unmet demand reduction and equity are prioritized alongside pure cost minimization.
+            </div>
+          )}
 
           <div className="chart-grid">
             <div className="card chart-card">

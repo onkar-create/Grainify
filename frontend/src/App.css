@@ -429,6 +429,10 @@ select {
   color: var(--success);
 }
 
+.kpi-value.negative {
+  color: var(--danger);
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
