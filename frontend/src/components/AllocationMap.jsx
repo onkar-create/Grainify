@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, GeoJSON, Marker, Polyline, Tooltip, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { WAREHOUSE_COORDS, modelDistrictsFor, geoJsonDistrictFor } from "../mapData";
@@ -219,37 +219,52 @@ export default function AllocationMap({ result, districts = [], focusDistrict = 
                 ? Math.min(10, 2 + r.quantity / 1200)
                 : Math.min(8, 1 + r.quantity / 1500);
 
+              // Leaflet renders markers in "markerPane", which sits ABOVE the default
+              // overlay pane used by polylines/polygons — so a short route between a
+              // warehouse and a nearby district can end up hidden entirely under the
+              // warehouse's icon. Promoting the focused route into markerPane (plus a
+              // light casing line for contrast) keeps it visible regardless of length
+              // or how dark the underlying district shading is.
               return (
-                <Polyline
-                  key={`${wh}-${r.district}`}
-                  positions={[from, to]}
-                  pathOptions={{
-                    color: "#b45309",
-                    weight,
-                    opacity: dimmed ? 0.15 : isFocusedRoute ? 0.9 : 0.55,
-                  }}
-                >
-                  <Tooltip sticky>
-                    {wh.replace("WH_", "")} &rarr; {r.district}: {Math.round(r.quantity).toLocaleString()} t
-                  </Tooltip>
-                  <Popup>
-                    <strong>{wh.replace("WH_", "")}</strong> &rarr; <strong>{r.district}</strong>
-                    <br />
-                    Quantity: {Math.round(r.quantity).toLocaleString()} t
-                    {km != null && (
-                      <>
-                        <br />
-                        Distance: {km} km
-                      </>
-                    )}
-                    {cost != null && (
-                      <>
-                        <br />
-                        Transport cost: &#8377;{Math.round(cost).toLocaleString()}
-                      </>
-                    )}
-                  </Popup>
-                </Polyline>
+                <Fragment key={`${wh}-${r.district}`}>
+                  {isFocusedRoute && (
+                    <Polyline
+                      positions={[from, to]}
+                      pane="markerPane"
+                      pathOptions={{ color: "#fff7ec", weight: weight + 5, opacity: 0.9 }}
+                    />
+                  )}
+                  <Polyline
+                    positions={[from, to]}
+                    pane={isFocusedRoute ? "markerPane" : undefined}
+                    pathOptions={{
+                      color: "#b45309",
+                      weight,
+                      opacity: dimmed ? 0.15 : isFocusedRoute ? 0.95 : 0.55,
+                    }}
+                  >
+                    <Tooltip sticky>
+                      {wh.replace("WH_", "")} &rarr; {r.district}: {Math.round(r.quantity).toLocaleString()} t
+                    </Tooltip>
+                    <Popup>
+                      <strong>{wh.replace("WH_", "")}</strong> &rarr; <strong>{r.district}</strong>
+                      <br />
+                      Quantity: {Math.round(r.quantity).toLocaleString()} t
+                      {km != null && (
+                        <>
+                          <br />
+                          Distance: {km} km
+                        </>
+                      )}
+                      {cost != null && (
+                        <>
+                          <br />
+                          Transport cost: &#8377;{Math.round(cost).toLocaleString()}
+                        </>
+                      )}
+                    </Popup>
+                  </Polyline>
+                </Fragment>
               );
             })
           )}
