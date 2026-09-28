@@ -8,6 +8,7 @@ import { downloadDistributionPlanCsv } from "../csvExport";
 
 const fmtTonnes = (v) => `${Math.round(v).toLocaleString()} t`;
 const fmtRupees = (v) => `₹${Math.round(v).toLocaleString()}`;
+const fmtRupeesPerTonne = (v) => `₹${Math.round(v).toLocaleString()}/t`;
 
 // Mirrors src/config.py COST_PER_TONNE_PER_KM — used to estimate transport cost
 // for a single district client-side from quantity + distance, without a new API.
@@ -131,6 +132,17 @@ export default function Dashboard() {
     nearestWarehouseKm != null && districtResult
       ? districtResult.baseline_allocation * nearestWarehouseKm * COST_PER_TONNE_PER_KM
       : null;
+  const baselineDistrictCostPerTonne =
+    baselineDistrictCostApprox != null && districtResult?.baseline_allocation > 0
+      ? baselineDistrictCostApprox / districtResult.baseline_allocation
+      : null;
+  const optimizedDistrictCostPerTonne =
+    districtResult?.optimized_allocation > 0 ? optimizedDistrictCost / districtResult.optimized_allocation : null;
+
+  const baselineDelivered = result ? result.total_demand - result.baseline_unmet : 0;
+  const optimizedDelivered = result ? result.total_demand - result.optimized_unmet : 0;
+  const baselineCostPerTonne = baselineDelivered > 0 ? result.baseline_cost / baselineDelivered : 0;
+  const optimizedCostPerTonne = optimizedDelivered > 0 ? result.optimized_cost / optimizedDelivered : 0;
 
   return (
     <div className="container" style={{ paddingTop: 32, paddingBottom: 56 }}>
@@ -378,7 +390,7 @@ export default function Dashboard() {
             <KpiCard label="Total predicted demand" value={fmtTonnes(result.total_demand)} />
             <KpiCard label="Total warehouse supply" value={fmtTonnes(result.total_supply)} />
             <KpiCard
-              label="Cost reduction vs. baseline"
+              label="Cost efficiency vs. baseline (per tonne)"
               value={`${result.cost_savings_pct.toFixed(1)}%`}
               positive={result.cost_savings_pct > 0}
               negative={result.cost_savings_pct < 0}
@@ -393,22 +405,29 @@ export default function Dashboard() {
 
           {result.cost_savings_pct < 0 && (
             <div className="error-banner" style={{ marginBottom: 20, background: "#fff7ec", borderColor: "#fde3b8", color: "var(--primary-dark)" }}>
-              Transport cost is higher than baseline this run because supply ({fmtTonnes(result.total_supply)}) falls
-              short of demand ({fmtTonnes(result.total_demand)}). Grainify's equity floor guarantees every district at
-              least 50% of its demand before optimizing further, even if that means reaching a far, expensive
-              district the baseline would have simply shorted. This is the deliberate cost of fairness, not an
-              error &mdash; unmet demand reduction and equity are prioritized alongside pure cost minimization.
+              Even on a fair cost-per-tonne basis, this run's optimized routing costs more than the baseline's.
+              That can happen when supply ({fmtTonnes(result.total_supply)}) is severely short of demand
+              ({fmtTonnes(result.total_demand)}) and every district's equity floor forces routing through
+              unusually expensive, distant warehouses. Re-check the scenario/data if this seems extreme.
             </div>
           )}
 
           <div className="chart-grid">
             <div className="card chart-card">
-              <h3>Total transport cost</h3>
+              <h3>Transport cost per tonne delivered</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: -8, marginBottom: 12 }}>
+                The fair efficiency comparison &mdash; baseline and optimized deliver different total tonnage, so
+                raw total cost alone isn't comparable.
+              </p>
               <ComparisonBarChart
-                baselineValue={result.baseline_cost}
-                optimizedValue={result.optimized_cost}
-                valueFormatter={fmtRupees}
+                baselineValue={baselineCostPerTonne}
+                optimizedValue={optimizedCostPerTonne}
+                valueFormatter={fmtRupeesPerTonne}
               />
+              <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: 12, marginBottom: 0 }}>
+                Totals: baseline {fmtRupees(result.baseline_cost)} for {fmtTonnes(baselineDelivered)} delivered
+                &middot; optimized {fmtRupees(result.optimized_cost)} for {fmtTonnes(optimizedDelivered)} delivered.
+              </p>
             </div>
             <div className="card chart-card">
               <h3>Total unmet demand</h3>
@@ -423,6 +442,10 @@ export default function Dashboard() {
           {selectedDistrict && districtResult && (
             <div className="card chart-card" style={{ marginBottom: 24 }}>
               <h3>{selectedDistrict} District Impact</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: -8, marginBottom: 12 }}>
+                Cost totals reflect different delivered quantities (see Allocation before/after), so compare the
+                per-tonne figures shown below each for a fair efficiency read.
+              </p>
               <div className="district-profile-grid">
                 <div className="profile-item">
                   <span className="profile-label">Demand</span>
@@ -449,10 +472,20 @@ export default function Dashboard() {
                   <span className="profile-value">
                     {baselineDistrictCostApprox != null ? `≈ ${fmtRupees(baselineDistrictCostApprox)}` : "—"}
                   </span>
+                  {baselineDistrictCostPerTonne != null && (
+                    <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                      {fmtRupeesPerTonne(baselineDistrictCostPerTonne)}
+                    </span>
+                  )}
                 </div>
                 <div className="profile-item">
                   <span className="profile-label">Cost after (optimized routes)</span>
                   <span className="profile-value">{fmtRupees(optimizedDistrictCost)}</span>
+                  {optimizedDistrictCostPerTonne != null && (
+                    <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                      {fmtRupeesPerTonne(optimizedDistrictCostPerTonne)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

@@ -66,9 +66,21 @@ def run_scenario(scenario_name: str = "Severe El Nino") -> dict:
     optimized = optimized_allocation(supply, demand)
     baseline = baseline_proportional_allocation(supply, demand)
 
+    # Compare cost per tonne actually delivered, not raw total cost. Grainify's equity
+    # floor typically delivers more total tonnes than the naive baseline (which just
+    # shorts whichever districts are most expensive to reach) — so its total transport
+    # bill can be higher even when it is MORE cost-efficient per tonne moved. Comparing
+    # raw totals across two runs that deliver different amounts of grain is misleading;
+    # cost per tonne delivered is the fair efficiency comparison.
+    total_demand = sum(demand.values())
+    baseline_delivered = total_demand - baseline["total_unmet"]
+    optimized_delivered = total_demand - optimized["total_unmet"]
+    baseline_cost_per_tonne = baseline["total_cost"] / baseline_delivered if baseline_delivered > 0 else 0
+    optimized_cost_per_tonne = optimized["total_cost"] / optimized_delivered if optimized_delivered > 0 else 0
+
     cost_savings_pct = (
-        100 * (baseline["total_cost"] - optimized["total_cost"]) / baseline["total_cost"]
-        if baseline["total_cost"] > 0 else 0
+        100 * (baseline_cost_per_tonne - optimized_cost_per_tonne) / baseline_cost_per_tonne
+        if baseline_cost_per_tonne > 0 else 0
     )
     unmet_reduction_pct = (
         100 * (baseline["total_unmet"] - optimized["total_unmet"]) / baseline["total_unmet"]
